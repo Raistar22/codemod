@@ -6,23 +6,29 @@ async function getPullRequestTitles() {
     state: "closed",
     sort: "created",
     direction: "desc",
-    base: "main", // Optional: filter pull requests that were merged into `main` branch
+    base: "main",
   });
-  const response = await fetch(`${CODEMOD_REPO_PULL_REQUESTS}?${params}`);
-  // The GitHub REST API limits the number of items returned in a single response; e.g., 30 items per page
-  const pullRequests = await response.json();
-  const titles = pullRequests.map((pullRequest) => pullRequest.title);
-  return titles;
+
+  try {
+    const response = await fetch(`${CODEMOD_REPO_PULL_REQUESTS}?${params}`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status} ${response.statusText}`);
+    }
+    const pullRequests = await response.json();
+    return pullRequests.map((pullRequest) => pullRequest.title);
+  } catch (error) {
+    console.error("Failed to fetch pull requests:", error);
+    return [];
+  }
 }
 
-function generateReleaseNotes() {
-  return getPullRequestTitles().then((titles) => {
-    let releaseNotes = "## Release Notes\n\n";
-    titles.forEach((title) => {
-      releaseNotes += `- ${title}\n`;
-    });
-    return releaseNotes;
+async function generateReleaseNotes() {
+  const titles = await getPullRequestTitles();
+  let releaseNotes = "## Release Notes\n\n";
+  titles.forEach((title) => {
+    releaseNotes += `- ${title}\n`;
   });
+  return releaseNotes;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
